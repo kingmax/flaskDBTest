@@ -123,7 +123,7 @@ class Country(db.Model):
     id = db.Column(db.Integer, primary_key=1)
     name = db.Column(db.String(30), unique=1)
     # 通过指定uselist=False, 一对多关系被转换为一对一关系
-    capital = db.relationship('Capital', uselist=False)
+    capital = db.relationship('Capital', uselist=False, back_populates='country')
 
     def __repr__(self):
         return '<Country {}>'.format(self.name)
@@ -136,11 +136,42 @@ class Capital(db.Model):
     # 所以跟一对多或多对一定义完全一样, 不变
     # 外键在“多”的一边
     country_id = db.Column(db.Integer, db.ForeignKey('country.id'))
-    country = db.relationship('Country')
+    country = db.relationship('Country', back_populates='capital')
 
     def __repr__(self):
         return '<Capital {}>'.format(self.name)
 
+
+# 多对多关系
+# 多对多需要借助一个关联表，作为中间人，将多对多转化为二个一对多关系（一为模型，多为中间人，即关联表中对应列）
+# 外键定义在中间表，注意：模型二边都需要定义外键
+association_table = db.Table('association',
+                             db.Column('student_id', db.Integer, db.ForeignKey('student.id')),
+                             db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'))
+                             )
+
+
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=1)
+    name = db.Column(db.String(30), unique=1)
+    grade = db.Column(db.String(20))
+    # 定义关系
+    # 多对多定义关系需要secondary指定关联表
+    teachers = db.relationship('Teacher', secondary=association_table, back_populates='students')
+
+    def __repr__(self):
+        return '<Student {}>'.format(self.name)
+
+
+class Teacher(db.Model):
+    id = db.Column(db.Integer, primary_key=1)
+    name = db.Column(db.String(30), unique=1)
+    office = db.Column(db.String(20))
+    # 建立双向关系
+    students = db.relationship('Student', secondary=association_table, back_populates='teachers')
+
+    def __repr__(self):
+        return '<Teacher {}>'.format(self.name)
 
 @app.route('/')
 def hello_world():
@@ -163,7 +194,7 @@ def renewDB():
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, Note=Note, Author=Author, Article=Article, Writer=Writer, Book=Book, Singer=Singer, Song=Song,
-                Citizen=Citizen, City=City, Country=Country, Capital=Capital)
+                Citizen=Citizen, City=City, Country=Country, Capital=Capital, Teacher=Teacher, Student=Student)
 
 
 if __name__ == '__main__':
