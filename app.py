@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 # load_dotenv()
 import os
 import click
+from flask_migrate import Migrate
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI',
@@ -11,6 +13,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI',
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+# 用于迁移数据库(当表结构发生变更时,不破坏原有数据)
+migrate = Migrate(app, db)
 
 
 class Note(db.Model):
@@ -172,6 +176,7 @@ class Teacher(db.Model):
 
     def __repr__(self):
         return '<Teacher {}>'.format(self.name)
+
 
 @app.route('/')
 def hello_world():
