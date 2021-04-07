@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import click
 from flask_migrate import Migrate
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -14,12 +15,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 # 用于迁移数据库(当表结构发生变更时,不破坏原有数据)
+# 基本步骤:
+# flask db init (创建迁移环境,只需执行一次)
+# flask db migrate -m "add note timestamp" (生成迁移脚本)
+# flask db upgrade (执行更新)
 migrate = Migrate(app, db)
 
 
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return '<Note %r>' % self.body
