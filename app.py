@@ -184,6 +184,30 @@ class Teacher(db.Model):
         return '<Teacher {}>'.format(self.name)
 
 
+# 级联操作cascade
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=1)
+    title = db.Column(db.String(50), unique=1)
+    body = db.Column(db.Text)
+    # 设置了cascade的一侧将被视为父对象, 对应的则为子对象(即:Comment)
+    # cascade默认行为是:save-update, merge (即没有指定cascade时)
+    # 常用组合:
+    # save-update,merge     (default，默认父对象删除时，子对象数据不会清除，但没了联系(外键值设置为空))
+    # save-update,merge,delete
+    # all (save-update,merge,delete,refresh-expire,expunge)
+    # all,delete-orphan (关系解除时子对象变成了孤立对象，则自动删除)
+    # 当需要删除子对象时可用all或save-update,merge,delete;
+    # 包括delete的话，父对象删除时子对象数据自动删除
+    comments = db.relationship('Comment', back_populates='post', cascade='all')
+
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=1)
+    body = db.Column(db.Text)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'))
+    post = db.relationship('Post', back_populates='comments')
+
+
 @app.route('/')
 def hello_world():
     return 'Hello World!'
@@ -205,7 +229,8 @@ def renewDB():
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, Note=Note, Author=Author, Article=Article, Writer=Writer, Book=Book, Singer=Singer, Song=Song,
-                Citizen=Citizen, City=City, Country=Country, Capital=Capital, Teacher=Teacher, Student=Student)
+                Citizen=Citizen, City=City, Country=Country, Capital=Capital, Teacher=Teacher, Student=Student,
+                Post=Post, Comment=Comment)
 
 
 if __name__ == '__main__':
