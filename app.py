@@ -7,7 +7,6 @@ import click
 from flask_migrate import Migrate
 from datetime import datetime
 
-
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI',
                                                   'mysql+pymysql://root:Jason.li@321@localhost/flaskdb_test')
@@ -36,7 +35,7 @@ class Article(db.Model):
     id = db.Column(db.Integer, primary_key=1)
     title = db.Column(db.String(50), index=1)
     body = db.Column(db.Text)
-    # 第一步：定义外键
+    # 第一步：(在“多”方) 定义外键
     # foreign key, 外键只能存单一数据(标量),所以在“多”的一边
     author_id = db.Column(db.Integer, db.ForeignKey('author.id'))
 
@@ -50,7 +49,7 @@ class Author(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(70), unique=True)
     phone = db.Column(db.String(20))
-    # 第二步：定义关系属性
+    # 第二步：(在“一”方) 定义关系
     # 关系属性在关系的出发侧定义，即一对多关系的“一”这一边
     articles = db.relationship('Article')
 
@@ -154,7 +153,8 @@ class Capital(db.Model):
 
 # 多对多关系
 # 多对多需要借助一个关联表，作为中间人，将多对多转化为二个一对多关系（一为模型，多为中间人，即关联表中对应列）
-# 外键定义在中间表，注意：模型二边都需要定义外键
+# 外键定义在中间表，注意：二边都需要外键
+# 同时二边都需要定义关系
 association_table = db.Table('association',
                              db.Column('student_id', db.Integer, db.ForeignKey('student.id')),
                              db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'))
@@ -208,6 +208,117 @@ class Comment(db.Model):
     post = db.relationship('Post', back_populates='comments')
 
 
+
+
+######################################## Materials
+class C(object):
+    """为Model类注入toDict方法"""
+
+    def toDict(self):
+        """convert db table row to dict"""
+        d = {}
+        for col in self.__table__.columns:
+            d[col.name] = getattr(self, col.name, None)
+        return d
+
+
+def _mCat_next_id():
+    return MatCategory.query.count() + 1
+
+
+class MatCategory(db.Model, C):
+    __tablename__ = 'mat_category'
+    id = db.Column(db.Integer, primary_key=1, default=_mCat_next_id)
+    name = db.Column(db.String(64), unique=1)
+    # one -> many
+    materials = db.relationship('Material', back_populates='category')
+
+    def __repr__(self):
+        return '<MatCategory {}>'.format(self.name)
+
+
+# many <-> many
+# secondary table for m to m
+t_mat_tag = db.Table('t_mat_tag',
+                     db.Column('mat_id', db.Integer, db.ForeignKey('material.id')),
+                     db.Column('tag_id', db.Integer, db.ForeignKey('mat_tag.id'))
+                     )
+
+
+def _mTag_next_id():
+    return MatTag.query.count() + 1
+
+
+class MatTag(db.Model, C):
+    __tablename__ = 'mat_tag'
+    id = db.Column(db.Integer, primary_key=1, default=_mTag_next_id)
+    name = db.Column(db.String(64), unique=1)
+    # many <-> many
+    materials = db.relationship('Material', secondary=t_mat_tag, back_populates='tags')
+
+    def __repr__(self):
+        return '<MatTag {}>'.format(self.name)
+
+
+def _material_next_id():
+    return Material.query.count() + 1
+
+
+class Material(db.Model, C):
+    __tablename__ = 'material'
+
+    # id = Column(INTEGER(11), primary_key=True, default=_material_next_id)
+    id = db.Column(db.Integer, primary_key=1, default=_material_next_id)
+    # many -> one
+    cat_id = db.Column(db.Integer, db.ForeignKey('mat_category.id'))
+    category = db.relationship('MatCategory', back_populates='materials')
+    # many <-> many
+    tags = db.relationship('MatTag', secondary=t_mat_tag, back_populates='materials')
+    name = db.Column(db.String(128))
+
+    def setCategory(self, cat):
+        """init cat_id for put material into db"""
+        if self.cat_id is not None:
+            print('there is already a cat_id')
+            return
+        c = cat.lower()
+        q = MatCategory.query.filter_by(name=c).first()
+        if q:
+            self.cat_id = q.id
+            print('set {} cat_id={}'.format(self, self.cat_id))
+        else:
+            obj = MatCategory(name=c)
+            db.session.add(obj)
+            db.session.commit()
+            self.cat_id = obj.id
+            print('new MatCategory {} and set {} cat_id={}'.format(obj, self, self.cat_id))
+
+    def setTags(self, tags):
+        """init tags for put material into db"""
+        if self.tags:
+            print('there are already some tags!')
+            return
+        tagList = [t.lower() for t in tags]
+        tagSets = set()
+        for tag in tagList:
+            q = MatTag.query.filter_by(name=tag).first()
+            if q:
+                tagSets.add(q)
+            else:
+                obj = MatTag(name=tag)
+                db.session.add(obj)
+                db.session.commit()
+                tagSets.add(obj)
+        if tagSets:
+            self.tags = list(tagSets)
+
+    def __repr__(self):
+        return '<Material {}>'.format(self.name)
+
+
+
+
+
 @app.route('/')
 def hello_world():
     return 'Hello World!'
@@ -230,7 +341,9 @@ def renewDB():
 def make_shell_context():
     return dict(db=db, Note=Note, Author=Author, Article=Article, Writer=Writer, Book=Book, Singer=Singer, Song=Song,
                 Citizen=Citizen, City=City, Country=Country, Capital=Capital, Teacher=Teacher, Student=Student,
-                Post=Post, Comment=Comment)
+                Post=Post, Comment=Comment,
+                MatCategory=MatCategory, MatTag=MatTag, Material=Material
+                )
 
 
 if __name__ == '__main__':
