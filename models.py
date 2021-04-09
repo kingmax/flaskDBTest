@@ -125,11 +125,11 @@ class Material(db.Model, C):
     type = db.Column(db.String(8), server_default='.sbsar')
     size = db.Column(db.Integer)
     relative_path = db.Column(db.String(512))
-    sbs_zip = db.Column(db.Boolean, default=False)
+    has_sbszip = db.Column(db.Boolean, default=False)
     thumbnail = db.Column(db.String(512))
-
     used_times = db.Column(db.Integer, default=0)
-    # md5 = db.Column(db.String(128), unique=True)
+
+    # md5_value = db.Column(db.String(128), unique=1)
     # one <-> one
     md5_id = db.Column(db.Integer, db.ForeignKey('asset_md5.id'))
     md5 = db.relationship('AssetMd5', back_populates='material')

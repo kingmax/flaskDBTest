@@ -3,6 +3,7 @@
 import os
 import hashlib
 import zipfile
+from models import *
 
 mat_source = 'E:\\mat'
 
@@ -45,7 +46,16 @@ def zip_file(file):
     return out_zip
 
 
-def check():
+def get_md5(file):
+    """if invalid return None"""
+    try:
+        return hashlib.md5(open(file, 'rb').read()).hexdigest()
+    except Exception as ex:
+        print(f'[GET_MD5] {ex}')
+    return None
+
+
+def check_getMats():
     cats = getCategory()
     # print(f'MatCategory:{cats}')
 
@@ -57,6 +67,7 @@ def check():
     err_sbsar = []
     err_thumb = []
     sbs_zips = []
+    matObjs = []
     for k, v in mats.items():
         print(f'{k}: {v}')
         for n in v:
@@ -65,6 +76,7 @@ def check():
             sbsar = os.path.join(fd, '%s.sbsar' % n)
             if not os.path.exists(sbsar):
                 err_sbsar.append(sbsar)
+                continue
 
             thumb = os.path.join(fd, '%s.png' % n)
             if not os.path.exists(thumb):
@@ -77,10 +89,22 @@ def check():
                 sbs_zips.append(sbszip)
 
             if os.path.exists(sbs) and not os.path.exists(sbszip):
-                new_zip = zip_file(sbs)
-                if os.path.exists(new_zip):
-                    sbs_zips.append(new_zip)
-                    print(f'new sbszip: {new_zip}')
+                sbszip = zip_file(sbs)
+                if os.path.exists(sbszip):
+                    sbs_zips.append(sbszip)
+                    print(f'new sbszip: {sbszip}')
+
+            matObj = Material(name=n,
+                              size=os.path.getsize(sbsar),
+                              relative_path='%s\\%s' % (k, n),
+                              has_sbszip=os.path.exists(sbszip),
+                              )
+            # addtion attrs
+            matObj._cat = k
+            matObj._tags = []
+            matObj._md5 = get_md5(sbsar)
+            matObj._thumb = '%s\\%s.jpg' % (matObj.relative_path, matObj._md5)
+            matObjs.append(matObj)
 
     for e in err_sbsar:
         print(f'[ERR SBSAR] {e}')
@@ -90,6 +114,9 @@ def check():
     for sbs in sbs_zips:
         print(f'[sbs] {sbs}')
 
+    return matObjs
+
 
 if __name__ == '__main__':
-    check()
+    mats = check_getMats()
+    print(mats)
