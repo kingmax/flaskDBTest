@@ -209,6 +209,7 @@ class Comment(db.Model):
 
 
 from models import *
+from tools import check_get_mats
 
 
 @app.route('/')
@@ -238,6 +239,18 @@ def initRoot():
         db.session.add(root)
     db.session.commit()
     click.echo('init Root done')
+
+
+@app.cli.command()
+def putMats():
+    """before do tihs; renew db; initRoot;
+    check and get material object list;
+    for mat in materials:
+        set caterary
+        set tags
+        set md5
+    """
+    pass
 
 
 @app.shell_context_processor

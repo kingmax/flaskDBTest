@@ -3,6 +3,9 @@
 import os
 import hashlib
 import zipfile
+import py7zr
+import tempfile
+import xml.etree.ElementTree as ET
 from models import *
 
 mat_source = 'E:\\mat'
@@ -46,6 +49,61 @@ def zip_file(file):
     return out_zip
 
 
+def get_mat_tags(sbs_or_sbsar_file):
+    """get sbs or sbsar tags from *.sbs or *.sbsar file"""
+    ret = []
+    base, ext = os.path.splitext(sbs_or_sbsar_file)
+    name = os.path.basename(base).lower()
+    ext = ext.lower()
+
+    if ext == '.sbs':
+        print('get sbs tags')
+        tree = ET.parse(sbs_or_sbsar_file)
+        root = tree.getroot()
+        found = False
+        for graph in root.iter('graph'):
+            if found:
+                break
+            identifier = graph.find('identifier')
+            if identifier:
+                _id = identifier.get('v')
+                if _id and _id.lower() == name:
+                    attributes = graph.find('attributes')
+                    for a in attributes.iter('tags'):
+                        v = a.get('v')
+                        if v:
+                            ret = v.split(';')
+                            found = True
+                            break
+
+    elif ext == '.sbsar':
+        print('get sbsar tags')
+        tempDir = tempfile.gettempdir()
+        target = ''
+        with py7zr.SevenZipFile(sbs_or_sbsar_file, 'r') as z:
+            ts = [f for f in z.getnames() if f.endswith('.xml')]
+            print(ts)
+            if not ts:
+                print(f'[ERR]cannot get an .xml file')
+                return []
+            t = ts[0]
+            z.extract(tempDir, t)
+            target = os.path.join(tempDir, t)
+        if os.path.exists(target):
+            tree = ET.parse(target)
+            root = tree.getroot()
+            for graph in root.iter('graph'):
+                pkgurl = graph.attrib.get('pkgurl')
+                # pkgurl = "pkg://ceramic_foam_geometric"
+                if pkgurl.endswith(name):
+                    kws = graph.attrib.get('keywords')
+                    if kws:
+                        ret = kws.split(';')
+
+    ret = [v.lower() for v in ret if v]
+    return list(set(ret))
+
+
 def get_md5(file):
     """if invalid return None"""
     try:
@@ -55,7 +113,7 @@ def get_md5(file):
     return None
 
 
-def check_getMats():
+def check_get_mats():
     cats = getCategory()
     # print(f'MatCategory:{cats}')
 
@@ -94,6 +152,14 @@ def check_getMats():
                     sbs_zips.append(sbszip)
                     print(f'new sbszip: {sbszip}')
 
+            tags = []
+            if os.path.exists(sbs):
+                print(f'get tags from sbs -> {sbs}')
+                tags = get_mat_tags(sbs)
+            elif os.path.exists(sbsar):
+                print(f'get tags from sbsar -> {sbsar}')
+                tags = get_mat_tags(sbsar)
+
             matObj = Material(name=n,
                               size=os.path.getsize(sbsar),
                               relative_path='%s\\%s' % (k, n),
@@ -101,9 +167,10 @@ def check_getMats():
                               )
             # addtion attrs
             matObj._cat = k
-            matObj._tags = []
+            matObj._tags = tags
             matObj._md5 = get_md5(sbsar)
             matObj._thumb = '%s\\%s.jpg' % (matObj.relative_path, matObj._md5)
+            matObj.thumbnail = matObj._thumb
             matObjs.append(matObj)
 
     for e in err_sbsar:
@@ -117,6 +184,17 @@ def check_getMats():
     return matObjs
 
 
-if __name__ == '__main__':
-    mats = check_getMats()
+def put2db():
+    mats = check_get_mats()
+    for mat in mats:
+        mat.setCategory(mat._cat)
+        mat.setTags(mat._tags)
+        mat.setMD5(mat._md5)
+        db.session.add(mat)
+    db.session.commit()
     print(mats)
+    return mats
+
+
+if __name__ == '__main__':
+    put2db()

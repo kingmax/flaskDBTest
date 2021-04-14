@@ -146,13 +146,15 @@ class Material(db.Model, C):
         q = MatCategory.query.filter_by(name=c).first()
         if q:
             self.cat_id = q.id
+            db.session.commit()
             print('set {} cat_id={}'.format(self, self.cat_id))
         else:
             obj = MatCategory(name=c)
             db.session.add(obj)
+            db.session.commit()
             self.cat_id = obj.id
             print('new MatCategory {} and set {} cat_id={}'.format(obj, self, self.cat_id))
-        db.session.commit()
+        # db.session.commit()
 
     def setTags(self, tags):
         """init tags for put this into db, Associate with MatTag"""
@@ -165,9 +167,11 @@ class Material(db.Model, C):
             q = MatTag.query.filter_by(name=tag).first()
             if q:
                 tagSets.add(q)
+                db.session.commit()
             else:
                 obj = MatTag(name=tag)
                 db.session.add(obj)
+                db.session.commit()
                 tagSets.add(obj)
         if tagSets:
             self.tags = list(tagSets)
@@ -182,12 +186,14 @@ class Material(db.Model, C):
         if q:
             self.md5_id = q.id
             print('set {} md5_id={}'.format(self, self.md5_id))
+            db.session.commit()
         else:
             obj = AssetMd5(md5=md5)
             db.session.add(obj)
+            db.session.commit()
             self.md5_id = obj.id
             print('new AssetMd5 {} and set {} md5_id={}'.format(obj, self, self.md5_id))
-        db.session.commit()
+        # db.session.commit()
 
     def __repr__(self):
         return '<Material {}>'.format(self.name)
