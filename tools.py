@@ -65,16 +65,23 @@ def get_mat_tags(sbs_or_sbsar_file):
             if found:
                 break
             identifier = graph.find('identifier')
-            if identifier:
+            if identifier is not None:
                 _id = identifier.get('v')
                 if _id and _id.lower() == name:
                     attributes = graph.find('attributes')
-                    for a in attributes.iter('tags'):
-                        v = a.get('v')
-                        if v:
-                            ret = v.split(';')
-                            found = True
-                            break
+                    if attributes is not None:
+                        tags = attributes.find('tags')
+                        if tags is not None:
+                            v = tags.get('v')
+                            if v:
+                                ret = v.split(';')
+                                found = True
+                    # for a in attributes.iter('tags'):
+                    #     v = a.get('v')
+                    #     if v:
+                    #         ret = v.split(';')
+                    #         found = True
+                    #         break
 
     elif ext == '.sbsar':
         print('get sbsar tags')
@@ -197,4 +204,5 @@ def put2db():
 
 
 if __name__ == '__main__':
-    put2db()
+    # put2db()
+    get_mat_tags(r'E:\mat\ceramic\ceramic_foam\ceramic_foam.sbs')
