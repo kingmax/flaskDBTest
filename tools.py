@@ -176,7 +176,8 @@ def check_get_mats():
             matObj._cat = k
             matObj._tags = tags
             matObj._md5 = get_md5(sbsar)
-            matObj._thumb = '%s\\%s.jpg' % (matObj.relative_path, matObj._md5)
+            # 将缩略图放入对应category目录下
+            matObj._thumb = '%s\\%s.jpg' % (k, matObj._md5)
             matObj.thumbnail = matObj._thumb
             matObjs.append(matObj)
 
@@ -194,6 +195,9 @@ def check_get_mats():
 def put2db():
     mats = check_get_mats()
     for mat in mats:
+        if AssetMd5.query.filter_by(md5=mat._md5).first():
+            print(f'[EXIST] {mat._md5} {mat}')
+            continue
         mat.setCategory(mat._cat)
         mat.setTags(mat._tags)
         mat.setMD5(mat._md5)
@@ -204,5 +208,5 @@ def put2db():
 
 
 if __name__ == '__main__':
-    # put2db()
-    get_mat_tags(r'E:\mat\ceramic\ceramic_foam\ceramic_foam.sbs')
+    put2db()
+    # get_mat_tags(r'E:\mat\ceramic\ceramic_foam\ceramic_foam.sbs')
