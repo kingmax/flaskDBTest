@@ -195,7 +195,7 @@ def check_get_mats():
 def put2db():
     mats = check_get_mats()
     for mat in mats:
-        if AssetMd5.query.filter_by(md5=mat._md5).first():
+        if MatMD5.query.filter_by(md5=mat._md5).first():
             print(f'[EXIST] {mat._md5} {mat}')
             continue
         mat.setCategory(mat._cat)

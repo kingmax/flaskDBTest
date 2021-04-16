@@ -47,8 +47,8 @@ class Root(db.Model, C):
     __tablename__ = 'root'
 
     id = db.Column(db.Integer, primary_key=1)
-    name = db.Column(db.String(32), unique=1, nullable=0)
-    cn_name = db.Column(db.String(32), unique=1)
+    name = db.Column(db.String(64), unique=1, nullable=0)
+    cn_name = db.Column(db.String(64), unique=1)
     # one -> many (Root <-> Material)
     materials = db.relationship('Material', back_populates='root')
 
@@ -56,8 +56,8 @@ class Root(db.Model, C):
         return '<Root {}>'.format(self.name)
 
 
-class AssetMd5(db.Model, C):
-    __tablename__ = 'asset_md5'
+class MatMD5(db.Model, C):
+    __tablename__ = 'mat_md5'
 
     id = db.Column(db.Integer, primary_key=1)
     md5 = db.Column(db.String(128), nullable=False, unique=1)
@@ -65,7 +65,7 @@ class AssetMd5(db.Model, C):
     material = db.relationship('Material', uselist=False, back_populates='md5')
 
     def __repr__(self):
-        return '<AssetMd5 {}>'.format(self.md5)
+        return '<MatMD5 {}>'.format(self.md5)
 
 
 def _mCat_next_id():
@@ -131,8 +131,8 @@ class Material(db.Model, C):
 
     # md5_value = db.Column(db.String(128), unique=1)
     # one <-> one
-    md5_id = db.Column(db.Integer, db.ForeignKey('asset_md5.id'))
-    md5 = db.relationship('AssetMd5', back_populates='material')
+    md5_id = db.Column(db.Integer, db.ForeignKey('mat_md5.id'))
+    md5 = db.relationship('MatMD5', back_populates='material')
     # many -> one (Material <-> Root)
     root_id = db.Column(db.Integer, db.ForeignKey('root.id'), default=3)
     root = db.relationship('Root', back_populates='materials')
@@ -182,13 +182,13 @@ class Material(db.Model, C):
         if self.md5_id is not None:
             print('already has md5_id:{}'.format(self.md5_id))
             return
-        q = AssetMd5.query.filter_by(md5=md5).first()
+        q = MatMD5.query.filter_by(md5=md5).first()
         if q:
             self.md5_id = q.id
             print('set {} md5_id={}'.format(self, self.md5_id))
             db.session.commit()
         else:
-            obj = AssetMd5(md5=md5)
+            obj = MatMD5(md5=md5)
             db.session.add(obj)
             db.session.commit()
             self.md5_id = obj.id

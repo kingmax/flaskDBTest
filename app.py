@@ -258,7 +258,7 @@ def make_shell_context():
     return dict(db=db, Note=Note, Author=Author, Article=Article, Writer=Writer, Book=Book, Singer=Singer, Song=Song,
                 Citizen=Citizen, City=City, Country=Country, Capital=Capital, Teacher=Teacher, Student=Student,
                 Post=Post, Comment=Comment,
-                MatCategory=MatCategory, MatTag=MatTag, Material=Material, Root=Root, AssetMd5=AssetMd5
+                MatCategory=MatCategory, MatTag=MatTag, Material=Material, Root=Root, MatMD5=MatMD5
                 )
 
 
