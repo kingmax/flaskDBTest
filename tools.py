@@ -8,10 +8,11 @@ import tempfile
 import xml.etree.ElementTree as ET
 from models import *
 
-mat_source = 'E:\\mat'
+# mat_source = 'E:\\mat'
+mat_source = 'E:\\SubstanceSourceMaterial'
 
 """
-入库设计::
+Material入库设计::
     1.将所有substance mats放入待处理目录，要求：
         a.分二层目录，第一层为材质分类(MatCategory)
         b.第二层目录即对应每个材质, 文件夹命名与材质名保持一致
@@ -21,12 +22,40 @@ mat_source = 'E:\\mat'
             可能存在的文件有:
             3.{name}.zip    (打包sbs格式, 无论有无dependencies均打包为zip, 方便仅下载一个zip文件即可)
         *所有目录与文件名均为英文小写、不得包含空格及特殊字符(下划线除外)
-    2.
+        
+    2.指定资源根目录,检查是否合规(可以同时计算md5,以便移除重复资源文件)
+    
+    3.获取有效资源列表,生成缩略图 (同时返回无效资源列表,包括与之对应的无效原因(是否缺少文件、是否重复等等))
+    
+    4.写入数据库
+    
+    5.可选copy资源到公司美术资源库目录 (或者部署网站的时候再手动处理)
 """
 
 
+def normalize_folder_name(root_folder, only_remove_chars=[]):
+    """默认移除路径中所有特殊字符(not isalnum),
+    如果only_remove_chars不为空[],则仅移除指定的字符
+    """
+    # https://stackoverflow.com/questions/20535705/recursively-renaming-directory-file-structures-on-a-local-file-system
+    ndict = {'dirs': '', 'files': ''}
+    topdown = {'dirs': False, 'files': True}
+    mode = 'dirs'
+    # for root, dirs, files in os.walk(STATIC_FOLDER_TEXTURES, topdown=False):
+    for root, ndict['dirs'], ndict['files'] in os.walk(root_folder, topdown[mode]):
+        for name in ndict[mode]:
+            new_name = ''
+            if only_remove_chars:
+                new_name = ''.join([c for c in name if c not in only_remove_chars])
+            elif not name.isalnum():
+                new_name = ''.join([c for c in name if c.isalnum()])
+            if new_name:
+                print(f'{os.path.join(root, name)}\n{os.path.join(root, new_name)}\n')
+                os.rename(os.path.join(root, name), os.path.join(root, new_name))
+
+
 def getSubFolderNames(root):
-    return [fd for fd in os.listdir(root) if os.path.isdir(os.path.join(root, fd))]
+    return [fd.lower() for fd in os.listdir(root) if os.path.isdir(os.path.join(root, fd))]
 
 
 def getCategory():
@@ -175,9 +204,9 @@ def check_get_mats():
             # addtion attrs
             matObj._cat = k
             matObj._tags = tags
-            matObj._md5 = get_md5(sbsar)
+            matObj.md5 = get_md5(sbsar)
             # 将缩略图放入对应category目录下
-            matObj._thumb = '%s\\%s.jpg' % (k, matObj._md5)
+            matObj._thumb = '%s\\%s.jpg' % (k, matObj.md5)
             matObj.thumbnail = matObj._thumb
             matObjs.append(matObj)
 
@@ -195,12 +224,12 @@ def check_get_mats():
 def put2db():
     mats = check_get_mats()
     for mat in mats:
-        if MatMD5.query.filter_by(md5=mat._md5).first():
-            print(f'[EXIST] {mat._md5} {mat}')
+        if MatMD5.query.filter_by(md5=mat.md5).first():
+            print(f'[EXIST] {mat.md5} {mat}')
             continue
         mat.setCategory(mat._cat)
         mat.setTags(mat._tags)
-        mat.setMD5(mat._md5)
+        mat.setMD5(mat.md5)
         db.session.add(mat)
     db.session.commit()
     print(mats)
@@ -208,5 +237,8 @@ def put2db():
 
 
 if __name__ == '__main__':
-    put2db()
+    normalize_folder_name(mat_source, only_remove_chars=[' ', '#', '-', "'"])
+
+    # mats = put2db()
+    # print(len(mats))
     # get_mat_tags(r'E:\mat\ceramic\ceramic_foam\ceramic_foam.sbs')

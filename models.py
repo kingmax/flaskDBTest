@@ -56,25 +56,13 @@ class Root(db.Model, C):
         return '<Root {}>'.format(self.name)
 
 
-class MatMD5(db.Model, C):
-    __tablename__ = 'mat_md5'
-
-    id = db.Column(db.Integer, primary_key=1)
-    md5 = db.Column(db.String(128), nullable=False, unique=1)
-    # one <-> one (AssetMd5 <-> Material)
-    material = db.relationship('Material', uselist=False, back_populates='md5')
-
-    def __repr__(self):
-        return '<MatMD5 {}>'.format(self.md5)
-
-
 def _mCat_next_id():
     return MatCategory.query.count() + 1
 
 
 class MatCategory(db.Model, C):
     __tablename__ = 'mat_category'
-    id = db.Column(db.Integer, primary_key=1, default=_mCat_next_id)
+    id = db.Column(db.Integer, primary_key=1)
     name = db.Column(db.String(64), unique=1)
     # one -> many
     materials = db.relationship('Material', back_populates='category')
@@ -83,7 +71,7 @@ class MatCategory(db.Model, C):
         return '<MatCategory {}>'.format(self.name)
 
 
-# many <-> many
+# many <-> many (Material <-> MatTag)
 # secondary table for m to m
 t_mat_tag = db.Table('t_mat_tag',
                      db.Column('mat_id', db.Integer, db.ForeignKey('material.id')),
@@ -97,13 +85,25 @@ def _mTag_next_id():
 
 class MatTag(db.Model, C):
     __tablename__ = 'mat_tag'
-    id = db.Column(db.Integer, primary_key=1, default=_mTag_next_id)
+    id = db.Column(db.Integer, primary_key=1)
     name = db.Column(db.String(64), unique=1)
     # many <-> many
     materials = db.relationship('Material', secondary=t_mat_tag, back_populates='tags')
 
     def __repr__(self):
         return '<MatTag {}>'.format(self.name)
+
+
+class MatMD5(db.Model, C):
+    __tablename__ = 'mat_md5'
+
+    id = db.Column(db.Integer, primary_key=1)
+    md5 = db.Column(db.String(128), nullable=False, unique=1)
+    # one <-> one (AssetMd5 <-> Material)
+    material = db.relationship('Material', uselist=False, back_populates='md5_')
+
+    def __repr__(self):
+        return '<MatMD5 {}>'.format(self.md5)
 
 
 def _material_next_id():
@@ -113,7 +113,7 @@ def _material_next_id():
 class Material(db.Model, C):
     __tablename__ = 'material'
 
-    id = db.Column(db.Integer, primary_key=1, default=_material_next_id)
+    id = db.Column(db.Integer, primary_key=1)
     # many -> one (Material -> MatCategory)
     cat_id = db.Column(db.Integer, db.ForeignKey('mat_category.id'))
     category = db.relationship('MatCategory', back_populates='materials')
@@ -128,11 +128,11 @@ class Material(db.Model, C):
     has_sbszip = db.Column(db.Boolean, default=False)
     thumbnail = db.Column(db.String(512))
     used_times = db.Column(db.Integer, default=0)
-
-    # md5_value = db.Column(db.String(128), unique=1)
+    # duplicate column
+    md5 = db.Column(db.String(128), unique=True)
     # one <-> one
     md5_id = db.Column(db.Integer, db.ForeignKey('mat_md5.id'))
-    md5 = db.relationship('MatMD5', back_populates='material')
+    md5_ = db.relationship('MatMD5', back_populates='material')
     # many -> one (Material <-> Root)
     root_id = db.Column(db.Integer, db.ForeignKey('root.id'), default=3)
     root = db.relationship('Root', back_populates='materials')
@@ -197,6 +197,5 @@ class Material(db.Model, C):
 
     def __repr__(self):
         return '<Material {}>'.format(self.name)
-
 
 
